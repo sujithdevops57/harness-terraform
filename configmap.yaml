@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment 
+metadata: 
+  name: s1-deployment
+spec: 
+  replicas: 2
+  selector:
+    matchLabels: 
+      app: su-backend 
+  template: 
+    metadata: 
+      labels: 
+        app: su-backend 
+    spec: 
+      containers: 
+      - name: c1-busybox
+        image: busybox  
+        command: ['sh', '-c', 'echo Configmap is :$su-config  && sleep 3600']  
+        env: 
+        - name: su-config
+          #value: "This is from env variable"
+          valueFrom: 
+            configMapKeyRef: 
+               name: my-config   #this is my existing configMap where i have created multiple keys and values in it. 
+               key: name                 # when i want to send only a specific key from my configmap i will use configMapKeyRef.
+                 # this is the key which i have been mentioned in the above "my-config" file.
+   # so if i want to send the complete configMap i will use : 
+   envFrom: 
+   - configMapRef:   
+     name: my-config    # this is the existing configMap file.            
+

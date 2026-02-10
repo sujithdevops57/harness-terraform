@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: Service
+spec: 
+  selector: 
+    app: backend
+  type: NodePort
+  ports: 
+  - targetPort: 80
+    #port: 80
+    nodeport: 35200 
+
+---
+#service of clusterIP
+apiVersion: v1
+kind: Service
+metadata: 
+  name: clusterip-svc
+spec: 
+  selector: 
+    app: backend
+  ports: 
+  - targetPort: 8081
+    port: 80
+    name: my-port
+    protocol: TCP
+    type: ClusterIP
+ 
+
+
+---
+#creating volume.yaml script
+apiVersion: v1
+kind: pod
+metadata: 
+  name: volume-pod
+spec: 
+  volumes: 
+  - name: vol57 
+    hostPath: #type of the volume u want to use either : hostPath/NFS/storageClass
+      path: /var/data # where do u want to store the data
+  containers: 
+  - name: c1
+  image: busybox
+  command: ['sh','-c', 'echo k8s-learning-by-softility > /volume57/data1.txt']  
+  volumeMounts: 
+  - name: vol57 # this name should be same as the volume name which u have mentioned under volumes block(line38).
+    mountPath: /volume57 
+
+# creating a persistent_volume pv 
+---
+apiVersion: v1 
+kind: PersistentVolume 
+metadata: 
+  name: pv-1
+spec:
+  nfs: 
+    server: 192.168.1.100 
+    path: /var/sft 
+    readOnly: false 
+  capacity:   
+    storage: 1Gi 
+  accessModes: 
+  - ReadWriteMany
+  persistentVolumeReclaimPolicy: Recycle   
+
+
+--- 
+apiVersion: v1 
+kind: v1 
+metadata: 
+  name: pvc-claim
+  namespace: sujith-ns  
+spec: 
+  accessModes: 
+  - ReadWriteMany  
+  resources: 
+    requests:
+      storage: 500Mi 
+
+#---------------------------------------------------------------------------------------------
+
+# pvc-deploy 
+---
+apiVersion: apps/v1
+kind: Deployment 
+metadata: 
+  name: nfs-deployment 
+spec: 
+  replicas: 2 
+  selector: 
+    matchLabels: 
+      app: nfs-app 
+  template: 
+    metadata: 
+    labels: 
+      app: nfs-app 
+    spec: 
+      volumes: 
+      - name: nfs-vol    
+        persistentVolumeclaim: 
+          claimName: nfs-claim 
+      containers: 
+      - name: c1 
+      image: busybox 
+      command: ['sh','-c','echo i am creating nfs-deploy-project > /output/file.txt; sleep 6; done']
+      volumeMounts: 
+      - name: nfs-vol 
+        mountPath: /output 
+
+
+
+# creating a storage class and pvc: 
+--- 
+apiVersion: storage.k8s.io/v1
+kind: StorageClass 
+metadata: 
+  name: sujith-storage 
+provisioner: kubernetes.io/no-provisioner  #kubernetes.io/gcp-pd 
+#provisioner: pd.csi.storage.gke.io 
+parameters: 
+  type: pd-ssd   
+
+--- 
+#creating a pvc 
+apiVersion: v1 
+kind: PersistentVolumeClaim 
+metadata: 
+  name: pvc-56 
+spec: 
+  accessModes: 
+    - ReadWriteOnce 
+  resources: 
+    requests: 
+      storage: 20Gi  
+  storageclassName: sujith-storage         
+# so here , Kubernetes looks for a PV that matches: storage ≥ 20Gi , 
+#accessMode = RWO, storageClassName = sujith-storage . 
+#if all these are matched then the binding will be takes place .  
+
+
+
+
+

@@ -1,0 +1,107 @@
+# Login App (Container) 
+# # Checkout App (Container)
+# both applucations are running on the port number 8080, but 2 different pod ips.
+
+# login-pod.yaml : 
+
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: login-pod
+#   labels:
+#     app: login
+# spec:
+#   containers:
+#   - name: login-container
+#     image: nginx
+#     ports:
+#     - containerPort: 8080 
+
+#     checkout-pod.yaml : 
+
+#     apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: checkout-pod
+#   labels:
+#     app: checkout
+# spec:
+#   containers:
+#   - name: checkout-container
+#     image: nginx
+#     ports:
+#     - containerPort: 8080
+
+
+# creating services for both the pods-yamls : 
+
+#  login-service.yaml : 
+
+#  apiVersion: v1
+# kind: Service
+# metadata:
+#   name: login-service
+# spec:
+#   type: ClusterIP
+#   selector:
+#     app: login
+#   ports:
+#   - port: 80
+#     targetPort: 8080 
+
+#     checkout-service.yaml : 
+
+#     apiVersion: v1
+# kind: Service
+# metadata:
+#   name: checkout-service
+# spec:
+#   type: ClusterIP
+#   selector:
+#     app: checkout
+#   ports:
+#   - port: 80
+#     targetPort: 8080
+ 
+#  Ingress-controller : 
+
+#  ingress.yaml : 
+
+#  apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: app-ingress
+# spec:
+#   rules:
+#   - host: myapp.com
+#     http:
+#       paths:
+#       - path: /login
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: login-service
+#             port:
+#               number: 80
+#       - path: /checkout
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: checkout-service
+#             port:
+#               number: 80
+
+
+#   # now user access the application by using :   http://myapp.com/login
+#  now what happens internally means : 
+
+#  1. DNS resolves myapp.com
+# 2. Request hits LoadBalancer IP
+# 3. LoadBalancer sends request to Ingress Controller
+# 4. Ingress sees path = /login
+# 5. Ingress forwards to login-service
+# 6. login-service checks endpoints
+# 7. Traffic goes to login-pod
+# 8. login-container responds
+
+
