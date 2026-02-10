@@ -1,0 +1,48 @@
+#yaml-with labels
+apiVersion: v1
+kind: pod
+metadata: 
+  name: pod-56
+  labels:
+    app: backend
+spec: 
+  containers: 
+  - name: c56
+    image: nginx
+    ports:
+      - containerport: 80 
+
+
+
+#----------------------------------------------------------------
+
+#creating a replicaset (rs.yaml)----------------------------------------------------------------
+apiVersion: apps/v1
+kind: ReplicaSet 
+metadata: 
+  name: sujith-rs-1
+  labels:
+    app: nginx-app 
+spec: 
+  replicas: 3
+  selector:
+    matchlabels: 
+      app: backend-nginx
+  template: 
+    metadata: 
+      labels: 
+        app: backend-nginx
+    spec:
+      containers: 
+      - name: c56
+        image: apache/nginx
+        ports: 
+        - containerport: 80
+
+        #after this yaml apply it like : kubectl apply -f rs.yaml 
+        #to delete rs : kubectl delete -f rs.yaml 
+
+        #---------------------- matchExpessions ------------------------------
+        matchexpressions: 
+        - {key: tier , operator: In ,values: [hyd,mum]}
+        - {key: ,operator: dc ,operator: NotIn, values: [frontend,rs]} 

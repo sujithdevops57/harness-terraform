@@ -1,0 +1,589 @@
+
+#count example(create multiple vms using count)
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/aws"
+      version = "~> 5.10.0"
+    }
+  }
+}
+
+-----------------------------------
+locals {
+  alphabets = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+               "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+               "u", "v", "w", "x", "y", "z"]
+}
+name = "my-vm-${element(local.alphabets)}" 
+------------------------------------
+provider "google" {
+    project = "big-elysium-466212-e2"
+    region = "us-central1"
+}
+
+resource "google_compute_instance" "vm_name" {
+    count = 2
+    name =  "my-vm-${count.index}"
+    zone = "us-central1-b"
+    machine_type = "e2-micro"
+
+    boot_disk {
+        initialize_params {
+            image = "debian-cloud/debian-12"
+        }
+    }
+
+    network_interface {
+        network = "default"
+        access_config {}
+    }
+} 
+
+# Create a Cloud Storage bucket, push a local file 
+#into it and make show all files must access.
+
+
+provider "google" {
+    project = ""
+    region = "us-central1"
+    zone = "us-central1-c"
+}
+
+resource "google_storage_bucket" "my_bucket" {
+    name = "suji-bucket-5678"
+    location = "US"
+}
+
+resource "google_storage_bucket_object" "file_upload" {
+    name = "randomfilename.txt" #which already existed
+    bucket = google_storage_bucket.my_bucket.name 
+    source = "./randomfilename.txt"
+
+}
+
+resource "google_storage_object_acl" "public_access" {
+    bucket = google_storage_bucket.my_bucket.name 
+    object = google_storage_bucket_object.file_upload.name
+
+    role_entity = [
+        "READER:allUsers",
+    ]
+}
+allUsers, allAuthenticatedUsers    || READER, WRITER, OWNER
+-----------------------------------------------------------------
+ #Create a custom VPC and firewall rule, then attach to a VM.
+  
+  
+  provider "google" {
+    project = "big-elysium-466212-e2" 
+    region = "us-central1"
+  }
+
+  resource "google_compute_network" "vpc_1" {
+    name = "my-vpc1"
+    auto_create_subnetworks = false 
+  }
+
+  resource "google_compute_subnetwork" "subnet_1" {
+    name = "subnet-11"
+    region = "us-central1"
+    ip_cidr_range = "10.0.3.0/24"
+    network = google_compute_network.vpc_1.id 
+  }
+
+  resource "google_compute_firewall" "firewall_1" {
+    name = "my-firewall-1"
+    network = google_compute_network.vpc_1.id
+    priority = 1000
+
+
+    allow {
+        protocol = "tcp"
+        ports = ["80", "22"]
+    }
+    source_ranges = ["0.0.0.0/0"]
+  }
+
+  resource "google_compute_instance" "vm_1" {
+    name = "my-vm"
+    zone = "us-central-a"
+    machine_type = "e2-medium"
+    boot_disk {
+      initialize_params {
+        image = "debian-cloud/debian-12"
+      }
+    }
+
+    network_interface {
+      network = google_compute_subnetwork.subnet_1.id 
+      access_config {}
+    }
+  }
+  ---------------------------------------------------------------------
+ # How get the state file of existing resource in gcp.
+
+  provider "google" {
+  project = "big-elysium-466212-e2"
+  region = "us-central"
+}
+
+resource "google_compute_instance" "my_vm" {
+  name = "docker-1"
+  machine_type = "e2-micro"
+  zone = "us-central1-b"
+
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-11"
+    }
+  }
+
+  network_interface {
+   network = "default"
+  }
+}
+
+
+#run this command after plan
+#terraform import google_compute_instance.my_vm
+# projects/big-elysium-466212-e2/zones/us-central1-b/instances/docker-1
+-----------------------------------------------------------------------
+
+#create 2 vms in 2 different zones using count ............
+
+provider "google" {
+  project = "leafy-rope-472907-e3"
+}
+locals {
+  zones = ["us-central1-b", "us-central1-c"]
+}
+resource "google_compute_instance" "vm_name" {
+  count = length(local.zones)
+name = "vm-${local.zones[count.index]}"
+machine_type = "e2-small"
+zone = local.zones[count.index]
+boot_disk {
+  initialize_params {
+    image = "debian-cloud/debian-12"
+  }
+}
+network_interface {
+  network = "default"
+}
+} 
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+resource "google_compute_instance" "tf_gce" {
+  name = "use-case-vm1"
+  zone = "us-central1-a"
+  machine_type = "e2-medium"
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+    }
+  }
+  network_interface {
+    network = "default"
+    access_config {
+     
+    }
+  }
+  desired_status = "RUNNING"
+  metadata_startup_script = file("script.sh")
+}
+
+
+# output block
+output "jenkins_url" {
+  value       = "http://${google_compute_instance.tf_gce.network_interface[0].access_config[0].nat_ip}:8080"
+  description = "Jenkins UI URL"
+}
+
+
+script.sh:
+#!/bin/bash
+
+# Update system
+sudo apt update -y
+sudo apt install fontconfig openjdk-21-jre -y
+
+# Verify Java installation
+java -version
+
+# Add Jenkins repository and key
+sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+
+echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc]" \
+  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+
+sudo apt-get update -y
+sudo apt-get install jenkins -y
+------------------------------------------------------------------------------------
+5. While creating the VM, the local files should be pushed into it. Software like Docker and Nginx should be installed, and the Docker service should be started.
+
+resource "google_compute_instance" "tf_vm1" {
+  name = "chandu-vm"
+  zone = "us-central1-a"
+  machine_type = "e2-medium"
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+    }
+  }
+  network_interface {
+    network = "default"
+    access_config {
+     
+    }
+  }
+  metadata = {
+    enable-osconfig = "TRUE"
+    ssh-keys="chandupolina95:${file("C:/Users/saich/.ssh/id_ed25519.pub")}"
+    startup-script =  file("docker-nginx.sh")
+  }
+
+  provisioner "file" {
+  source = "./chandu.txt"
+  destination = "/home/chandupolina95/demo.txt"
+  }
+
+  connection {
+    type = "ssh"
+    user = "chandupolina95"
+    private_key = file("C:/Users/saich/.ssh/id_ed25519")
+    host = google_compute_instance.tf_vm1.network_interface[0].access_config[0].nat_ip
+  }
+}
+
+
+docker-nginx.sh
+
+sudo apt update
+sudo apt upgrade -y
+sudo apt install openjdk-21-jdk -y
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt upgrade -y
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+apt install tree -y
+# nginx instalaltion
+sudo apt update
+sudo apt install nginx -y
+
+
+-----------------------------------------------------------------------------
+------------------------------------------------------------------------------
+#create a vpc under that create 2 subnets and under that create 2 vms using 
+#single resource block .
+
+provider "google" {
+    project = ""
+  
+}
+
+resource "google_compute_network" "name" {
+    name = "vpc1"
+    auto_create_subnetworks = false 
+  
+}
+locals {
+  subnet = {
+    subnet1 = {
+        cidr = "10.1.0.0/24"
+        region = "us-central1"
+    }
+    subnet2 = {
+        cidr = "10.1.1.0/24"
+        region = "us-central1"
+    }
+  }
+  instances = {
+    instance1 = {
+        subnet  = "subnet1"
+        zone = "us-central1-a"
+    }
+    instance2 = {
+        subnet  = "subnet2"
+        zone = "us-central1-b"
+    }
+  }
+}
+
+resource "google_compute_subnetwork" "name1" {
+    for_each = local.subnet
+    name = each.key
+    ip_cidr_range = each.value.cidr
+    region = each.value.region
+    network = google_compute_network.name.id
+}
+
+resource "google_compute_instance" "name2" {
+    for_each = local.instances
+    name = each.key
+    zone = each.value.zone
+    machine_type = "e2-medium"
+    boot_disk {
+      initialize_params {
+        image = "debian-cloud/debian-12"
+      }
+    }
+    network_interface {
+      subnetwork = google_compute_subnetwork.name1[each.value.subnet].id
+    
+      access_config {
+        
+      }
+    }
+
+}
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Here u can define multiple provider blocks with different configurations , 
+and if u want to use multiple providers in a single resource u can use alias 
+attribute and u can call them from anywhere in the code.
+
+# provider block for project-a
+provider "google" {
+  project = "first-project" 
+  region = "us-central1                                                         "
+}
+
+# provider block for project-b
+provider "google" {
+    alias   = "second-project"
+    project = "proj-B"
+    region  = "europe-west1"
+
+}
+
+#-----------------------------------------------------------------project A -----------------------------------------------------------------
+resource "google_compute_network" "vpc1-proj-A" {
+    name = "vpc1"
+    auto_create_subnetworks = false
+}
+# creating a subnet 
+ resource "google_compute_subnetwork" "subnet1-proj-A" {
+    name = "subnet-1"
+    ip_cidr_range = "10.0.1.0/16"
+    region = "europe-west1"
+    network = google_compute_network.vpc1-proj-A.id 
+ }
+
+
+
+#----------------------------------------------------------------project B -----------------------------------------------------------------
+resource "google_compute_network" "vpc2-proj-B" {
+    name = "vpc2"
+    auto_create_subnetworks = false 
+
+
+    #meta-argument to call the provider with alias
+    provider = google.second-project
+
+}
+# create a subnet 2 in proje-b 
+
+resource "google_compute_subnetwork" "subnet2-proj-B" {
+    name = "subnet-2"
+    ip_cidr_range = "10.0.2.0/16"
+    region = "us-central1"
+    network = google_compute_network.vpc2-proj-B.id 
+
+    #meta-argument
+    provider = google.second-project 
+}
+
+resource "google_compute_instance" "vm_a" {
+    provider = google.first-project
+  name         = "vm-a"
+  machine_type = "e2-micro"
+  zone         = "asia-south1-a"
+
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-12"
+    }
+  }
+
+  network_interface {
+    network = "default"
+    access_config {} # Assigns external IP
+  }
+
+  tags = ["vm-a"]
+}
+
+resource "google_compute_instance" "vm_b" {
+  provider     = google.project_b
+  name         = "vm-b"
+  machine_type = "e2-micro"
+  zone         = "us-central1-a"
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+    }
+  }
+
+  network_interface {
+    network = "default"
+    access_config {}
+  }
+
+  tags = ["vm-b"]
+}
+---------------------------------------------------------------------------------------
+terraform {
+  required_providers {
+    google = {
+      source = "hashicorp/google"
+      version = "~> 6.0"
+    }
+   
+  }
+  backend "gcs" {
+    bucket = "bucket1project1-466607"
+    prefix = "/state/dev"
+  }
+}
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+variable "number_count" {
+    type = number 
+    validation {
+      condition = number_count >= 10 
+      error_message = "number_count should be more than 10"
+    }
+}
+
+variable "env_deploy" {
+    type = string 
+    validation {
+        condition = (["dev", "prod", "test"], var.env_deploy)
+        error_message = "only above values are allowed"
+    }
+}                           
+
+variable "region_name" {
+    type = string
+    validation{
+        condition = contains(["us-central1" , "us-east4"] , var.region_name)
+        error_message = "no othere regions are allowed"
+        
+    }
+    default = "us-east4"
+}
+
+
+# now call the above devlared variables from the above folder.........
+
+resource "google_compute_instance" "vm_info" {
+    name = "suji-$(var.env)-vm"
+    machine_type = "e2-micro"
+    region = "$(var.region_name)-a"
+}
+# VM creation 
+resource "google_compute_instance" "vm_creation"{
+    name = "su-vm"
+    machine_type = "e2-micro"
+   
+    region = "us-central1"
+    zone = "us-central1-a"
+    network = "default" 
+
+    boot_disk {
+         image = "projects/belgium-e25/global/images/custom-img1"
+         image = "debian-cloud/debian-12"
+    }
+
+
+}
+# outputs 
+
+output "vm_id_display"{
+    description = "inorder to display the vm name"
+
+    value = google_compute_instance.vm_creation.id 
+
+
+
+}
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+provider "google" {
+    project = var.proj-id
+    region = "us-central1"
+    zone = "us-central1-c"
+}
+
+#project-id variable declaration 
+variable "proj-id" {
+    type = string
+    default = "big-elysium-466212-e2"
+}
+#service-acc id variable declaration
+ variable "seraccid" {
+   type = string 
+   default = "service57"
+ }
+
+
+#create a service account
+resource "google_service_account" "service_acc" {
+    account_id = var.seraccid
+    display_name = "service-acc56"
+}
+
+#create a null resource 
+
+resource "null_resource" "delay-seracc" {
+    provisioner "local-exec"{
+
+        command = "echo Simulating Iam delay.... && timeout /t 30 "
+    
+    }
+}
+
+#create a vm 
+resource "google_compute_instance" "vm_creation" {
+    name = "pla-vm"
+    machine_type = "e2-micro"
+    zone = "us-central1-b"
+  
+    boot_disk {
+       initialize_params {
+          image = "debian-cloud/debian-12"
+       }
+    }
+    network_interface {
+        network = "default"
+        access_config {}
+    }
+    service_account {
+        email = "${var.seraccid}@${var.proj-id}.iam.gserviceaccount.com"
+        scopes = ["cloud-platform"]
+    }
+
+   
+   
+} 
+ resource "null_resource" "script" {
+
+
+    depends_on = [ google_compute_instance.vm_creation ]
+ }
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
